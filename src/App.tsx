@@ -20,7 +20,12 @@ type LetterPop = {
   size: number
 }
 
-type PlayMode = 'preschool' | 'words' | 'writer'
+type PlayMode = 'preschool' | 'words' | 'writer' | 'repeat'
+const PRACTICE_KEYS = 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ0123456789'.split('')
+const choosePracticeKey = (previous = '') => {
+  const candidates = PRACTICE_KEYS.filter((key) => key !== previous)
+  return candidates[Math.floor(Math.random() * candidates.length)]
+}
 type Theme = 'light' | 'dark'
 type SoundMode = 'voice' | 'tone' | 'off'
 type SoundType = Exclude<SoundMode, 'off'>
@@ -30,6 +35,7 @@ const MODES: { id: PlayMode; icon: string; label: string; age: string }[] = [
   { id: 'preschool', icon: '✦', label: 'Preescolar', age: '2–5 años' },
   { id: 'words', icon: 'ABC', label: 'Primeras palabras', age: '6–7 años' },
   { id: 'writer', icon: '✎', label: 'Escritura libre', age: '8+ años' },
+  { id: 'repeat', icon: '♫', label: 'Escuchá y encontrá', age: '4+ años' },
 ]
 
 const SCENES: { id: Scene; icon: string; label: string }[] = [
@@ -64,6 +70,7 @@ const MODE_COPY: Record<PlayMode, { eyebrow: string; title: string; description:
     title: '¡Escribí tu primera palabra!',
     description: 'Mirá cada letra bien grande mientras armás palabras a tu manera.',
   },
+  repeat: { eyebrow: 'Escuchá y encontrá', title: '¿Dónde está esa tecla?', description: 'Escuchá la letra y buscala en el teclado.' },
   writer: {
     eyebrow: 'Un espacio para crear',
     title: '¿Qué historia imaginamos hoy?',
@@ -101,6 +108,15 @@ function App() {
   const [protectionProgress, setProtectionProgress] = useState(0)
   const [releasedKey, setReleasedKey] = useState('')
   const [pops, setPops] = useState<LetterPop[]>([])
+  const [practiceTarget, setPracticeTarget] = useState(() => choosePracticeKey())
+  const [practiceScore, setPracticeScore] = useState(0)
+  const [practiceFeedback, setPracticeFeedback] = useState<'ready' | 'correct' | 'wrong'>('ready')
+  const practiceTimer = useRef<number | null>(null)
+  const practiceAudio = useRef<HTMLAudioElement | null>(null)
+  const practiceTargetRef = useRef(practiceTarget)
+  useEffect(() => {
+    practiceTargetRef.current = practiceTarget
+  }, [practiceTarget])
   const nextId = useRef(0)
   const audioContext = useRef<AudioContext | null>(null)
   const characterAudio = useRef<HTMLAudioElement | null>(null)
@@ -112,6 +128,8 @@ function App() {
   const returnToSettingsAfterFullscreen = useRef(false)
 
   useEffect(() => () => {
+    if (practiceTimer.current !== null) window.clearTimeout(practiceTimer.current)
+    practiceAudio.current?.pause()
     if (settingsHoldTimer.current !== null) window.clearInterval(settingsHoldTimer.current)
   }, [])
 
@@ -225,6 +243,22 @@ function App() {
     void audio.play().catch(() => undefined)
   }, [soundMode])
 
+  const playPracticeAudio = useCallback((value: string) => {
+    practiceAudio.current?.pause()
+    const filename = value.toLocaleLowerCase('es-AR')
+    const audio = new Audio(`${import.meta.env.BASE_URL}audio/characters/${encodeURIComponent(filename)}.mp3?v=7`)
+    practiceAudio.current = audio
+    void audio.play().catch(() => undefined)
+  }, [])
+
+  useEffect(() => {
+    if (mode !== 'repeat' || showSettings || showFullscreenHelp) {
+      practiceAudio.current?.pause()
+      return
+    }
+    playPracticeAudio(practiceTarget)
+  }, [mode, practiceTarget, showSettings, showFullscreenHelp, playPracticeAudio])
+
   const addPop = useCallback((value: string) => {
     const id = nextId.current++
     const displayValue = uppercaseOnly ? value.toLocaleUpperCase('es-AR') : value
@@ -278,6 +312,27 @@ function App() {
 
         setProtectedKey(null)
         setProtectionProgress(100)
+        return
+      }
+
+      if (mode === 'repeat') {
+        if (event.repeat || practiceFeedback === 'correct') return
+        if (event.key.length !== 1) return
+        event.preventDefault()
+        const answer = event.key.toLocaleUpperCase('es-AR')
+        if (!PRACTICE_KEYS.includes(answer)) return
+        if (answer === practiceTargetRef.current) {
+          setPracticeFeedback('correct')
+          setPracticeScore((current) => current + 1)
+          addPop(answer)
+          if (practiceTimer.current !== null) window.clearTimeout(practiceTimer.current)
+          practiceTimer.current = window.setTimeout(() => {
+            setPracticeFeedback('ready')
+            setPracticeTarget((current) => choosePracticeKey(current))
+          }, 1500)
+        } else {
+          setPracticeFeedback('wrong')
+        }
         return
       }
 
@@ -338,7 +393,7 @@ function App() {
       window.removeEventListener('keyup', handleKeyUp, { capture: true })
       window.removeEventListener('contextmenu', blockContextMenu)
     }
-  }, [addPop, finishFullscreenSetup, mode, playNote, showFullscreenHelp, showSettings, speakCharacter, uppercaseOnly])
+  }, [addPop, finishFullscreenSetup, mode, playNote, showFullscreenHelp, showSettings, speakCharacter, uppercaseOnly, practiceFeedback])
 
   useEffect(() => {
     if (!protectedKey) return
@@ -413,13 +468,24 @@ function App() {
   const changeMode = (nextMode: PlayMode) => {
     setMode(nextMode)
     setSoundType(nextMode === 'writer' ? 'tone' : 'voice')
-    setSoundEnabled(nextMode === 'preschool')
+    setSoundEnabled(nextMode === 'preschool' || nextMode === 'repeat')
+    if (practiceTimer.current !== null) window.clearTimeout(practiceTimer.current)
+    setPracticeFeedback('ready')
+    setPracticeScore(0)
+    setPracticeTarget(choosePracticeKey())
     setText('')
     setPops([])
     setLastKey(nextMode === 'words' ? (uppercaseOnly ? '¡HOLA!' : '¡Hola!') : '')
   }
 
   const clearPlayground = () => {
+    if (mode === 'repeat') {
+      if (practiceTimer.current !== null) window.clearTimeout(practiceTimer.current)
+      setPracticeScore(0)
+      setPracticeFeedback('ready')
+      setPracticeTarget((current) => choosePracticeKey(current))
+      return
+    }
     setText('')
     setPops([])
     setLastKey(mode === 'words' ? (uppercaseOnly ? '¡OTRA VEZ!' : '¡Otra vez!') : '')
@@ -603,6 +669,19 @@ function App() {
           </>
         )}
 
+        {mode === 'repeat' && (
+          <div className="practice-game" aria-live="polite">
+            <div className="practice-score">Aciertos: {practiceScore}</div>
+            <h2>¡Escuchá y buscá la tecla!</h2>
+            <button type="button" className="practice-listen" onClick={(event) => {
+              playPracticeAudio(practiceTarget)
+              event.currentTarget.blur()
+              document.getElementById('playground')?.focus({ preventScroll: true })
+            }} aria-label="Volver a escuchar la letra">♫</button>
+            <p>{practiceFeedback === 'correct' ? '¡Muy bien! ✨' : practiceFeedback === 'wrong' ? '¡Probá otra vez!' : 'Presioná la tecla que escuchaste'}</p>
+            {practiceFeedback === 'correct' && <strong className="practice-answer">{practiceTarget}</strong>}
+          </div>
+        )}
         {mode === 'writer' && (
           <div ref={writerPaper} className="writer-paper" aria-live="polite">
             {text ? <span>{text}</span> : <span className="placeholder">Empezá a escribir…</span>}
@@ -610,8 +689,8 @@ function App() {
           </div>
         )}
 
-        <button className="clear-button" type="button" onClick={clearPlayground} disabled={!text && !pops.length}>
-          <span aria-hidden="true">↻</span> {mode === 'preschool' ? 'Limpiar las letras' : 'Borrar y empezar de nuevo'}
+        <button className="clear-button" type="button" onClick={clearPlayground} disabled={mode !== 'repeat' && !text && !pops.length}>
+          <span aria-hidden="true">↻</span> {mode === 'preschool' ? 'Limpiar las letras' : mode === 'repeat' ? 'Reiniciar juego' : 'Borrar y empezar de nuevo'}
         </button>
 
         {protectedKey && (
