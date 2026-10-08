@@ -149,6 +149,11 @@ body { overflow: hidden; }
 .settings-security > span { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border-radius: 10px; color: white; background: #4fc27b; font-weight: 900; }
 .settings-security p { margin: 0; font-size: 12px; font-weight: 650; }
 .settings-security strong { display: block; color: #326346; }
+.close-app-button { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 14px; padding: 12px 16px; border: 1px solid #f0d6d5; border-radius: 15px; color: #a84c49; background: #fff5f4; cursor: pointer; font-size: 13px; font-weight: 900; }
+.close-app-button:hover { color: #913d3a; background: #ffebe9; }
+.close-app-button:focus-visible { outline: 3px solid #ffb703; outline-offset: 3px; }
+.close-app-button span { font-size: 19px; line-height: 1; }
+.close-app-help { margin: 10px 0 0; color: #8b5b3d; font-size: 12px; font-weight: 700; text-align: center; }
 .start-playing-button { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 16px; padding: 15px 20px; border: 0; border-radius: 16px; color: white; background: #6c63ff; box-shadow: 0 6px 0 #5149d8; cursor: pointer; font-size: 16px; font-weight: 900; transition: translate 160ms ease, box-shadow 160ms ease; }
 .start-playing-button:hover { translate: 0 -2px; box-shadow: 0 8px 0 #5149d8; }
 .start-playing-button:active { translate: 0 4px; box-shadow: 0 2px 0 #5149d8; }

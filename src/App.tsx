@@ -53,6 +53,7 @@ type ProtectedKey = {
 
 function App() {
   const [mode, setMode] = useState<PlayMode>('preschool')
+  const [hasStartedPlaying, setHasStartedPlaying] = useState(false)
   const [text, setText] = useState('')
   const [lastKey, setLastKey] = useState('¡HOLA!')
   const [soundOn, setSoundOn] = useState(true)
@@ -62,6 +63,7 @@ function App() {
   const [showFullscreenHelp, setShowFullscreenHelp] = useState(false)
   const [showSettings, setShowSettings] = useState(true)
   const [isFirstSetup, setIsFirstSetup] = useState(true)
+  const [closeUnavailable, setCloseUnavailable] = useState(false)
   const [settingsHold, setSettingsHold] = useState(0)
   const [protectedKey, setProtectedKey] = useState<ProtectedKey | null>(null)
   const [protectionProgress, setProtectionProgress] = useState(0)
@@ -73,9 +75,18 @@ function App() {
   const unlockedUntil = useRef(new Map<string, number>())
   const settingsHoldStarted = useRef(0)
   const settingsHoldTimer = useRef<number | null>(null)
+  const returnToSettingsAfterFullscreen = useRef(false)
 
   useEffect(() => () => {
     if (settingsHoldTimer.current !== null) window.clearInterval(settingsHoldTimer.current)
+  }, [])
+
+  const finishFullscreenSetup = useCallback(() => {
+    setShowFullscreenHelp(false)
+    if (returnToSettingsAfterFullscreen.current) {
+      returnToSettingsAfterFullscreen.current = false
+      setShowSettings(true)
+    }
   }, [])
 
   const playNote = useCallback((letter: string) => {
@@ -129,7 +140,7 @@ function App() {
         const modifierKey = event.metaKey ? 'Meta' : event.altKey ? 'Alt' : event.ctrlKey ? 'Control' : event.key
         const allSpecialKeysUnlocked = (unlockedUntil.current.get('*') ?? 0) > performance.now()
         if (allSpecialKeysUnlocked || (unlockedUntil.current.get(modifierKey) ?? 0) > performance.now()) {
-          if (event.key === 'F11') setShowFullscreenHelp(false)
+          if (event.key === 'F11') finishFullscreenSetup()
           return
         }
 
@@ -150,6 +161,8 @@ function App() {
         setProtectionProgress(100)
         return
       }
+
+      setHasStartedPlaying(true)
 
       if (event.key === 'Backspace') {
         event.preventDefault()
@@ -204,7 +217,7 @@ function App() {
       window.removeEventListener('keyup', handleKeyUp, { capture: true })
       window.removeEventListener('contextmenu', blockContextMenu)
     }
-  }, [addPop, mode, playNote, showSettings, uppercaseOnly])
+  }, [addPop, finishFullscreenSetup, mode, playNote, showSettings, uppercaseOnly])
 
   useEffect(() => {
     if (!protectedKey) return
@@ -229,16 +242,17 @@ function App() {
     const detectBrowserFullscreen = () => {
       const active = window.innerHeight >= window.screen.height - 2
       setIsFullscreen(active)
-      if (active) setShowFullscreenHelp(false)
+      if (active) finishFullscreenSetup()
     }
 
     detectBrowserFullscreen()
     window.addEventListener('resize', detectBrowserFullscreen)
     return () => window.removeEventListener('resize', detectBrowserFullscreen)
-  }, [])
+  }, [finishFullscreenSetup])
 
   const prepareFullscreen = () => {
     unlockedUntil.current.set('F11', performance.now() + 7000)
+    returnToSettingsAfterFullscreen.current = true
     setShowSettings(false)
     setShowFullscreenHelp(true)
   }
@@ -267,6 +281,12 @@ function App() {
   const startPlaying = () => {
     setIsFirstSetup(false)
     setShowSettings(false)
+  }
+
+  const closeApp = async () => {
+    if (document.fullscreenElement) await document.exitFullscreen()
+    window.close()
+    window.setTimeout(() => setCloseUnavailable(true), 250)
   }
 
   const changeMode = (nextMode: PlayMode) => {
@@ -385,7 +405,7 @@ function App() {
           </span>
         ))}
 
-        {mode === 'preschool' && pops.length === 0 && (
+        {mode === 'preschool' && !hasStartedPlaying && (
           <div className="preschool-prompt" aria-live="polite">
             <span aria-hidden="true">A</span>
             <strong>¡Apretá una tecla!</strong>
@@ -477,7 +497,7 @@ function App() {
               </button>
               <button type="button" onClick={prepareFullscreen}>
                 <span aria-hidden="true">↗</span>
-                <span><strong>Pantalla completa</strong><small>Preparar tecla F11</small></span>
+                <span><strong>Activar pantalla completa</strong><small>Prepara la tecla F11</small></span>
                 <b aria-hidden="true">›</b>
               </button>
               <button type="button" onClick={toggleKeepLetters}>
@@ -497,6 +517,20 @@ function App() {
               <p><strong>Protección activa</strong> Mantené cualquier tecla especial durante 3 segundos para habilitarlas todas por 5 segundos.</p>
             </div>
 
+            {!isFirstSetup && (
+              <button className="close-app-button" type="button" onClick={closeApp}>
+                <span aria-hidden="true">×</span> Cerrar Tecladito
+              </button>
+            )}
+
+            {closeUnavailable && (
+              <p className="close-app-help" role="status">
+                {isFullscreen
+                  ? <>Para salir de pantalla completa y cerrar Tecladito, usá <strong>Alt + F4</strong>.</>
+                  : <>El navegador no permite cerrar esta pestaña automáticamente. Usá <strong>Alt + F4</strong>.</>}
+              </p>
+            )}
+
             {isFirstSetup && (
               <button className="start-playing-button" type="button" onClick={startPlaying}>
                 Empezar a jugar <span aria-hidden="true">→</span>
@@ -514,7 +548,7 @@ function App() {
               <strong id="fullscreen-title">Ahora presioná F11</strong>
               <p>La tecla está habilitada por 7 segundos. Este modo evita que un toque accidental de Esc cierre la pantalla completa.</p>
             </div>
-            <button type="button" onClick={() => setShowFullscreenHelp(false)} aria-label="Cerrar indicación">×</button>
+            <button type="button" onClick={finishFullscreenSetup} aria-label="Cerrar indicación">×</button>
           </div>
         </div>
       )}
