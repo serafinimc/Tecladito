@@ -24,12 +24,34 @@ type PlayMode = 'preschool' | 'words' | 'writer'
 type Theme = 'light' | 'dark'
 type SoundMode = 'voice' | 'tone' | 'off'
 type SoundType = Exclude<SoundMode, 'off'>
+type Scene = 'classic' | 'space' | 'ocean' | 'forest'
 
 const MODES: { id: PlayMode; icon: string; label: string; age: string }[] = [
   { id: 'preschool', icon: '✦', label: 'Preescolar', age: '2–5 años' },
   { id: 'words', icon: 'ABC', label: 'Primeras palabras', age: '6–7 años' },
   { id: 'writer', icon: '✎', label: 'Escritura libre', age: '8+ años' },
 ]
+
+const SCENES: { id: Scene; icon: string; label: string }[] = [
+  { id: 'classic', icon: '✦', label: 'Clásico' },
+  { id: 'space', icon: '🪐', label: 'Espacio' },
+  { id: 'ocean', icon: '🐠', label: 'Océano' },
+  { id: 'forest', icon: '🍃', label: 'Bosque' },
+]
+
+const SCENE_DECORATIONS: Record<Scene, [string, string, string]> = {
+  classic: ['✦', '●', '✿'],
+  space: ['🪐', '★', '☄'],
+  ocean: ['🐠', '○', '〰'],
+  forest: ['🍃', '🌼', '🦋'],
+}
+
+const SCENE_PATTERNS: Record<Scene, string[]> = {
+  classic: ['✦', '●', '✿', '★', '○', '◆', '✧', '●', '❋', '◇', '✦', '○'],
+  space: ['✦', '🪐', '🚀', '★', '☄', '🌙', '✧', '🛸', '⭐', '🌎', '✨', '●'],
+  ocean: ['🫧', '🐠', '🐙', '○', '🐳', '🐚', '🪼', '🌊', '🐡', '🫧', '⭐', '🐟'],
+  forest: ['🍃', '🌳', '🍄', '🦋', '🌼', '🐞', '🌿', '🍂', '🐿️', '🌻', '🪺', '☘️'],
+}
 
 const MODE_COPY: Record<PlayMode, { eyebrow: string; title: string; description: string }> = {
   preschool: {
@@ -63,6 +85,10 @@ function App() {
   const [soundEnabled, setSoundEnabled] = useState(true)
   const soundMode: SoundMode = soundEnabled ? soundType : 'off'
   const [theme, setTheme] = useState<Theme>(() => localStorage.getItem('tecladito-theme') === 'dark' ? 'dark' : 'light')
+  const [scene, setScene] = useState<Scene>(() => {
+    const savedScene = localStorage.getItem('tecladito-scene')
+    return savedScene === 'space' || savedScene === 'ocean' || savedScene === 'forest' ? savedScene : 'classic'
+  })
   const [keepLetters, setKeepLetters] = useState(true)
   const [uppercaseOnly, setUppercaseOnly] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -95,6 +121,10 @@ function App() {
     const themeColor = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim()
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', themeColor)
   }, [theme])
+
+  useEffect(() => {
+    localStorage.setItem('tecladito-scene', scene)
+  }, [scene])
 
   useEffect(() => {
     if (soundMode === 'voice') return
@@ -205,7 +235,7 @@ function App() {
       x: 8 + Math.random() * 80,
       y: 10 + Math.random() * 68,
       tilt: -18 + Math.random() * 36,
-      size: 72 + Math.random() * 56,
+      size: 150 + Math.random() * 80,
     }
     setPops((current) => [...current.slice(mode === 'preschool' ? -17 : -10), pop])
     if (mode !== 'preschool' || !keepLetters) {
@@ -418,6 +448,8 @@ function App() {
   const toggleSound = () => setSoundEnabled((current) => !current)
 
   const copy = MODE_COPY[mode]
+  const sceneDecorations = SCENE_DECORATIONS[scene]
+  const scenePattern = SCENE_PATTERNS[scene]
   const soundLabel = soundEnabled ? (soundType === 'voice' ? 'Voz' : 'Tonos') : 'Silencio'
   const nextSoundLabel = soundType === 'voice' ? 'tonos' : 'lectura de letras'
 
@@ -531,10 +563,13 @@ function App() {
         ))}
       </nav>
 
-      <section id="playground" tabIndex={-1} className={`playground playground-${mode}`} aria-label={`Modo ${MODES.find((item) => item.id === mode)?.label}`}>
-        <div className="decoration decoration-one" aria-hidden="true">✦</div>
-        <div className="decoration decoration-two" aria-hidden="true">●</div>
-        <div className="decoration decoration-three" aria-hidden="true">✿</div>
+      <section id="playground" tabIndex={-1} className={`playground playground-${mode} scene-${scene}`} aria-label={`Modo ${MODES.find((item) => item.id === mode)?.label}`}>
+        <div className="decoration decoration-one" aria-hidden="true">{sceneDecorations[0]}</div>
+        <div className="decoration decoration-two" aria-hidden="true">{sceneDecorations[1]}</div>
+        <div className="decoration decoration-three" aria-hidden="true">{sceneDecorations[2]}</div>
+        <div className="scene-pattern" aria-hidden="true">
+          {scenePattern.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}
+        </div>
         {pops.map((pop) => (
           <span
             className="letter-pop"
@@ -558,7 +593,7 @@ function App() {
 
         {mode === 'words' && (
           <>
-            <div className="key-display" aria-live="polite">{lastKey}</div>
+            <div className={lastKey.length === 1 ? 'key-display' : 'key-display key-display-label'} aria-live="polite">{lastKey}</div>
             <div className="typed-paper">
               {text ? <span>{text}</span> : <span className="placeholder">Empezá a escribir…</span>}
               <span className="cursor" aria-hidden="true" />
@@ -627,6 +662,24 @@ function App() {
                   >
                     <span className="mode-icon" aria-hidden="true">{item.icon}</span>
                     <span><strong>{item.label}</strong><small>{item.age}</small></span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="settings-section">
+              <h3>Elegí un fondo</h3>
+              <div className="scene-picker">
+                {SCENES.map((item) => (
+                  <button
+                    type="button"
+                    key={item.id}
+                    className={scene === item.id ? `scene-option scene-preview-${item.id} active` : `scene-option scene-preview-${item.id}`}
+                    onClick={() => setScene(item.id)}
+                    aria-pressed={scene === item.id}
+                  >
+                    <span aria-hidden="true">{item.icon}</span>
+                    <strong>{item.label}</strong>
                   </button>
                 ))}
               </div>
