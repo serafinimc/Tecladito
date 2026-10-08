@@ -1,6 +1,6 @@
-:root { font-family: 'Nunito', system-ui, sans-serif; color: #46405f; background: #f6f4fc; font-synthesis: none; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
+:root { font-family: 'Nunito', system-ui, sans-serif; color: var(--text); background: var(--page-bg); font-synthesis: none; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
 * { box-sizing: border-box; }
 html { min-width: 320px; min-height: 100%; }
-body { min-width: 320px; min-height: 100vh; margin: 0; background: radial-gradient(circle at 10% 8%, rgba(108,99,255,.11), transparent 22%), radial-gradient(circle at 90% 18%, rgba(255,183,3,.12), transparent 20%), #f6f4fc; }
+body { min-width: 320px; min-height: 100vh; margin: 0; background: var(--page-background); transition: color 200ms ease, background 200ms ease; }
 button, a { -webkit-tap-highlight-color: transparent; }
-::selection { color: #fff; background: #6c63ff; }
+::selection { color: var(--surface); background: var(--brand); }

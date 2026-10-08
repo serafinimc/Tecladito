@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import './App.css'
 
-const COLORS = ['#ff725e', '#ffb703', '#7bc950', '#28b8d5', '#6c63ff', '#d65db1']
+const COLORS = ['var(--letter-coral)', 'var(--letter-yellow)', 'var(--letter-green)', 'var(--letter-cyan)', 'var(--letter-purple)', 'var(--letter-pink)']
 const PROTECTION_MS = 3000
 const BLOCKED_KEYS = new Set([
   'Escape', 'Tab', 'CapsLock', 'Control', 'Alt', 'Meta', 'ContextMenu',
@@ -21,6 +21,7 @@ type LetterPop = {
 }
 
 type PlayMode = 'preschool' | 'words' | 'writer'
+type Theme = 'light' | 'dark'
 
 const MODES: { id: PlayMode; icon: string; label: string; age: string }[] = [
   { id: 'preschool', icon: '✦', label: 'Preescolar', age: '2–5 años' },
@@ -57,6 +58,7 @@ function App() {
   const [text, setText] = useState('')
   const [lastKey, setLastKey] = useState('¡HOLA!')
   const [soundOn, setSoundOn] = useState(true)
+  const [theme, setTheme] = useState<Theme>(() => localStorage.getItem('tecladito-theme') === 'dark' ? 'dark' : 'light')
   const [keepLetters, setKeepLetters] = useState(true)
   const [uppercaseOnly, setUppercaseOnly] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -81,11 +83,20 @@ function App() {
     if (settingsHoldTimer.current !== null) window.clearInterval(settingsHoldTimer.current)
   }, [])
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    localStorage.setItem('tecladito-theme', theme)
+    const themeColor = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim()
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', themeColor)
+  }, [theme])
+
   const finishFullscreenSetup = useCallback(() => {
     setShowFullscreenHelp(false)
     if (returnToSettingsAfterFullscreen.current) {
       returnToSettingsAfterFullscreen.current = false
       setShowSettings(true)
+    } else {
+      window.requestAnimationFrame(() => document.getElementById('playground')?.focus({ preventScroll: true }))
     }
   }, [])
 
@@ -133,6 +144,11 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'F11' && showFullscreenHelp) {
+        finishFullscreenSetup()
+        return
+      }
+
       if (showSettings || event.target instanceof HTMLButtonElement) return
       const isBlocked = BLOCKED_KEYS.has(event.key) || event.ctrlKey || event.altKey || event.metaKey
 
@@ -217,7 +233,7 @@ function App() {
       window.removeEventListener('keyup', handleKeyUp, { capture: true })
       window.removeEventListener('contextmenu', blockContextMenu)
     }
-  }, [addPop, finishFullscreenSetup, mode, playNote, showSettings, uppercaseOnly])
+  }, [addPop, finishFullscreenSetup, mode, playNote, showFullscreenHelp, showSettings, uppercaseOnly])
 
   useEffect(() => {
     if (!protectedKey) return
@@ -250,9 +266,9 @@ function App() {
     return () => window.removeEventListener('resize', detectBrowserFullscreen)
   }, [finishFullscreenSetup])
 
-  const prepareFullscreen = () => {
+  const prepareFullscreen = (shouldReturnToSettings: boolean) => {
     unlockedUntil.current.set('F11', performance.now() + 7000)
-    returnToSettingsAfterFullscreen.current = true
+    returnToSettingsAfterFullscreen.current = shouldReturnToSettings
     setShowSettings(false)
     setShowFullscreenHelp(true)
   }
@@ -322,6 +338,49 @@ function App() {
 
   return (
     <main className="app-shell">
+      <div className="quick-controls" aria-label="Controles rápidos">
+        <button
+          type="button"
+          className={uppercaseOnly ? 'quick-control active' : 'quick-control'}
+          onClick={(event) => {
+            toggleUppercase()
+            event.currentTarget.blur()
+            document.getElementById('playground')?.focus({ preventScroll: true })
+          }}
+          aria-pressed={uppercaseOnly}
+          aria-label={uppercaseOnly ? 'Usar mayúsculas y minúsculas' : 'Usar solo mayúsculas'}
+          title={uppercaseOnly ? 'Solo mayúsculas' : 'Mayúsculas y minúsculas'}
+        >
+          <span aria-hidden="true">{uppercaseOnly ? 'AA' : 'Aa'}</span>
+        </button>
+        <button
+          type="button"
+          className={soundOn ? 'quick-control sound-control active' : 'quick-control sound-control muted'}
+          onClick={(event) => {
+            setSoundOn((value) => !value)
+            event.currentTarget.blur()
+            document.getElementById('playground')?.focus({ preventScroll: true })
+          }}
+          aria-pressed={soundOn}
+          aria-label={soundOn ? 'Silenciar sonidos' : 'Activar sonidos'}
+          title={soundOn ? 'Sonido activado' : 'Sonido desactivado'}
+        >
+          <span aria-hidden="true">♫</span>
+        </button>
+        <button
+          type="button"
+          className="quick-control fullscreen-control"
+          onClick={(event) => {
+            prepareFullscreen(false)
+            event.currentTarget.blur()
+          }}
+          aria-label="Activar pantalla completa con F11"
+          title="Pantalla completa"
+        >
+          <span aria-hidden="true">↗</span>
+        </button>
+      </div>
+
       <button
         className="settings-trigger"
         type="button"
@@ -360,7 +419,7 @@ function App() {
           <button className="icon-button" type="button" onClick={() => setSoundOn((value) => !value)} aria-label={soundOn ? 'Desactivar sonido' : 'Activar sonido'}>
             {soundOn ? '♫' : '♩'}
           </button>
-          <button className="fullscreen-button" type="button" onClick={prepareFullscreen}>
+          <button className="fullscreen-button" type="button" onClick={() => prepareFullscreen(false)}>
             <span aria-hidden="true">{isFullscreen ? '↙' : '↗'}</span>
             {isFullscreen ? 'Salir con F11' : 'Pantalla completa'}
           </button>
@@ -388,7 +447,7 @@ function App() {
         ))}
       </nav>
 
-      <section id="playground" className={`playground playground-${mode}`} aria-label={`Modo ${MODES.find((item) => item.id === mode)?.label}`}>
+      <section id="playground" tabIndex={-1} className={`playground playground-${mode}`} aria-label={`Modo ${MODES.find((item) => item.id === mode)?.label}`}>
         <div className="decoration decoration-one" aria-hidden="true">✦</div>
         <div className="decoration decoration-two" aria-hidden="true">●</div>
         <div className="decoration decoration-three" aria-hidden="true">✿</div>
@@ -457,7 +516,7 @@ function App() {
           <strong>Modo protegido</strong>
           <p>Mantené Esc, Ctrl, Alt o F1–F12 durante 3 segundos para usarlas. La tecla Windows depende del sistema.</p>
         </div>
-        <button type="button" onClick={prepareFullscreen}>{isFullscreen ? 'Salir con F11' : 'Activar pantalla completa'}</button>
+        <button type="button" onClick={() => prepareFullscreen(false)}>{isFullscreen ? 'Salir con F11' : 'Activar pantalla completa'}</button>
       </section>
 
       {showSettings && (
@@ -495,7 +554,12 @@ function App() {
                 <span><strong>Sonido</strong><small>{soundOn ? 'Activado' : 'Desactivado'}</small></span>
                 <i className={soundOn ? 'switch on' : 'switch'} aria-hidden="true" />
               </button>
-              <button type="button" onClick={prepareFullscreen}>
+              <button type="button" onClick={() => setTheme((current) => current === 'light' ? 'dark' : 'light')} aria-pressed={theme === 'dark'}>
+                <span aria-hidden="true">{theme === 'dark' ? '☾' : '☀'}</span>
+                <span><strong>Modo oscuro</strong><small>{theme === 'dark' ? 'Activado' : 'Desactivado'}</small></span>
+                <i className={theme === 'dark' ? 'switch on' : 'switch'} aria-hidden="true" />
+              </button>
+              <button type="button" onClick={() => prepareFullscreen(true)}>
                 <span aria-hidden="true">↗</span>
                 <span><strong>Activar pantalla completa</strong><small>Prepara la tecla F11</small></span>
                 <b aria-hidden="true">›</b>
