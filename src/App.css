@@ -3,7 +3,8 @@
 .app-shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 18px 0 32px; }
 .topbar { min-height: 72px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 20px; padding: 0 20px; border: 1px solid color-mix(in srgb, var(--text-strong) 8%, transparent); border-radius: 22px; background: var(--surface-glass); box-shadow: 0 10px 40px color-mix(in srgb, var(--text-strong) 8%, transparent); backdrop-filter: blur(12px); }
 .brand { display: inline-flex; align-items: center; gap: 11px; width: fit-content; color: var(--text-strong); font: 800 24px/1 'Baloo 2', sans-serif; text-decoration: none; }
-.brand-mark { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 14px 14px 14px 5px; color: var(--white); background: var(--brand); box-shadow: 0 7px 0 var(--brand-dark); }
+.brand-mark { display: grid; width: 42px; height: 42px; place-items: center; }
+.brand-mark img { width: 44px; height: 44px; object-fit: contain; }
 .status-pill { display: flex; align-items: center; gap: 9px; padding: 9px 15px; border-radius: 99px; color: var(--success-strong); background: var(--success-bg-soft); font-size: 13px; font-weight: 800; }
 .status-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 4px color-mix(in srgb, var(--success) 15%, transparent); }
 .header-actions { display: flex; justify-content: flex-end; gap: 9px; }
@@ -189,7 +190,7 @@ body { overflow: hidden; }
 .settings-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .settings-controls > button, .audio-setting { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 15px; border: 1px solid var(--border); border-radius: 18px; color: var(--text-secondary); background: var(--surface); text-align: left; }
 .settings-controls > button { cursor: pointer; }
-.settings-controls > .fullscreen-setting { grid-column: 1 / -1; }
+.settings-controls > .fullscreen-setting, .settings-controls > .install-setting { grid-column: 1 / -1; }
 .settings-controls > button > span:first-child, .audio-mode-button > span:first-child, .audio-mode-label > span:first-child { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 13px; color: var(--brand); background: var(--surface-icon); font-size: 20px; font-weight: 900; }
 .audio-setting { grid-template-columns: 1fr auto; }
 .audio-mode-button, .audio-mode-label { min-width: 0; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 12px; padding: 0; border: 0; color: inherit; background: transparent; text-align: left; }
