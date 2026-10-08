@@ -53,8 +53,7 @@ button { font: inherit; }
 .preschool-prompt strong { color: var(--text-strong); font: 800 27px/1.2 'Baloo 2', sans-serif; }
 .preschool-prompt small { margin-top: 5px; font-size: 13px; font-weight: 700; }
 .playground-preschool .clear-button { position: absolute; bottom: 24px; }
-.writer-paper { position: relative; z-index: 2; width: 100%; min-height: 315px; max-height: 390px; overflow: auto; padding: 17px 26px 17px 66px; border: 1px solid var(--border-soft); border-radius: 20px; color: var(--text); background: repeating-linear-gradient(var(--surface) 0 42px, var(--notebook-line) 43px 44px); font: 700 25px/44px 'Nunito', sans-serif; white-space: pre-wrap; overflow-wrap: anywhere; text-align: left; box-shadow: 0 8px 30px color-mix(in srgb, var(--text-strong) 6%, transparent); }
-.writer-paper::before { content: ''; position: absolute; top: 0; bottom: 0; left: 45px; width: 2px; background: var(--notebook-margin); }
+.writer-paper { position: relative; z-index: 2; width: 100%; min-height: 315px; max-height: 390px; overflow: auto; padding: 15px 26px 19px 66px; border: 1px solid var(--border-soft); border-radius: 20px; color: var(--text); background: linear-gradient(90deg, transparent 44px, var(--notebook-margin) 44px 46px, transparent 46px), repeating-linear-gradient(var(--surface) 0 42px, var(--notebook-line) 43px 44px); background-attachment: scroll, local; background-position: 0 0, 0 10px; font: 700 25px/44px 'Nunito', sans-serif; white-space: pre-wrap; overflow-wrap: anywhere; text-align: left; box-shadow: 0 8px 30px color-mix(in srgb, var(--text-strong) 6%, transparent); }
 .writer-paper .cursor { height: 27px; vertical-align: -3px; }
 .playground-writer .clear-button { margin-top: 20px; }
 .blocked-toast { position: absolute; top: 24px; left: 50%; z-index: 5; translate: -50% 0; min-width: 340px; display: grid; grid-template-columns: auto auto 90px auto; align-items: center; gap: 9px; padding: 10px 14px; border-radius: 99px; color: var(--warning-text); background: var(--warning-bg); box-shadow: 0 8px 24px color-mix(in srgb, var(--warning-text) 12%, transparent); font-size: 13px; font-weight: 800; animation: toast-in .18s ease-out; }
@@ -145,14 +144,20 @@ body { overflow: hidden; }
 .settings-mode-grid .mode-option { min-height: 76px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--border-soft); }
 .settings-mode-grid .mode-option.active { box-shadow: inset 0 0 0 2px var(--brand), 0 7px 20px color-mix(in srgb, var(--text-strong) 10%, transparent); }
 .settings-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.settings-controls > button { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 15px; border: 1px solid var(--border); border-radius: 18px; color: var(--text-secondary); background: var(--surface); cursor: pointer; text-align: left; }
-.settings-controls > button > span:first-child { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 13px; color: var(--brand); background: var(--surface-icon); font-size: 20px; font-weight: 900; }
+.settings-controls > button, .audio-setting { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 15px; border: 1px solid var(--border); border-radius: 18px; color: var(--text-secondary); background: var(--surface); text-align: left; }
+.settings-controls > button { cursor: pointer; }
+.settings-controls > button > span:first-child, .audio-mode-button > span:first-child, .audio-mode-label > span:first-child { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 13px; color: var(--brand); background: var(--surface-icon); font-size: 20px; font-weight: 900; }
+.audio-setting { grid-template-columns: 1fr auto; }
+.audio-mode-button, .audio-mode-label { min-width: 0; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 12px; padding: 0; border: 0; color: inherit; background: transparent; text-align: left; }
+.audio-mode-button { cursor: pointer; }
 .settings-controls > button > .letters-setting { font: 800 13px/1 'Baloo 2', sans-serif; letter-spacing: -1px; }
 .settings-controls strong, .settings-controls small { display: block; }
 .settings-controls strong { color: var(--text-strong); font-size: 14px; }
 .settings-controls small { margin-top: 2px; color: var(--text-muted); font-size: 11px; font-weight: 700; }
 .settings-controls b { color: var(--text-faint); font-size: 26px; }
-.switch { position: relative; width: 38px; height: 23px; border-radius: 99px; background: var(--switch-off); }
+.switch { position: relative; width: 38px; height: 23px; padding: 0; border: 0; border-radius: 99px; background: var(--switch-off); }
+button.switch { cursor: pointer; }
+button.switch:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 .switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 17px; height: 17px; border-radius: 50%; background: var(--white); box-shadow: 0 2px 4px color-mix(in srgb, var(--text-strong) 18%, transparent); transition: translate 160ms ease; }
 .switch.on { background: var(--brand); }
 .switch.on::after { translate: 15px 0; }

@@ -22,6 +22,8 @@ type LetterPop = {
 
 type PlayMode = 'preschool' | 'words' | 'writer'
 type Theme = 'light' | 'dark'
+type SoundMode = 'voice' | 'tone' | 'off'
+type SoundType = Exclude<SoundMode, 'off'>
 
 const MODES: { id: PlayMode; icon: string; label: string; age: string }[] = [
   { id: 'preschool', icon: '✦', label: 'Preescolar', age: '2–5 años' },
@@ -57,7 +59,9 @@ function App() {
   const [hasStartedPlaying, setHasStartedPlaying] = useState(false)
   const [text, setText] = useState('')
   const [lastKey, setLastKey] = useState('¡HOLA!')
-  const [soundOn, setSoundOn] = useState(true)
+  const [soundType, setSoundType] = useState<SoundType>('voice')
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const soundMode: SoundMode = soundEnabled ? soundType : 'off'
   const [theme, setTheme] = useState<Theme>(() => localStorage.getItem('tecladito-theme') === 'dark' ? 'dark' : 'light')
   const [keepLetters, setKeepLetters] = useState(true)
   const [uppercaseOnly, setUppercaseOnly] = useState(true)
@@ -73,6 +77,8 @@ function App() {
   const [pops, setPops] = useState<LetterPop[]>([])
   const nextId = useRef(0)
   const audioContext = useRef<AudioContext | null>(null)
+  const characterAudio = useRef<HTMLAudioElement | null>(null)
+  const writerPaper = useRef<HTMLDivElement | null>(null)
   const heldKeys = useRef(new Map<string, number>())
   const unlockedUntil = useRef(new Map<string, number>())
   const settingsHoldStarted = useRef(0)
@@ -90,6 +96,17 @@ function App() {
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', themeColor)
   }, [theme])
 
+  useEffect(() => {
+    if (soundMode === 'voice') return
+    characterAudio.current?.pause()
+    characterAudio.current = null
+  }, [soundMode])
+
+  useEffect(() => {
+    if (mode !== 'writer' || !writerPaper.current) return
+    writerPaper.current.scrollTop = writerPaper.current.scrollHeight
+  }, [mode, text])
+
   const finishFullscreenSetup = useCallback(() => {
     setShowFullscreenHelp(false)
     if (returnToSettingsAfterFullscreen.current) {
@@ -101,13 +118,52 @@ function App() {
   }, [])
 
   const playNote = useCallback((letter: string) => {
-    if (!soundOn) return
+    if (soundMode !== 'tone') return
 
     const AudioContextClass = window.AudioContext || window.webkitAudioContext
     if (!AudioContextClass) return
 
     const context = audioContext.current ?? new AudioContextClass()
     audioContext.current = context
+
+    if (mode === 'writer') {
+      const duration = 0.045
+      const buffer = context.createBuffer(1, Math.ceil(context.sampleRate * duration), context.sampleRate)
+      const samples = buffer.getChannelData(0)
+      for (let index = 0; index < samples.length; index += 1) {
+        const decay = Math.pow(1 - index / samples.length, 4)
+        samples[index] = (Math.random() * 2 - 1) * decay
+      }
+
+      const click = context.createBufferSource()
+      const clickFilter = context.createBiquadFilter()
+      const clickGain = context.createGain()
+      click.buffer = buffer
+      clickFilter.type = 'highpass'
+      clickFilter.frequency.value = 900
+      const isWideKey = letter === ' ' || letter === 'Enter'
+      clickGain.gain.setValueAtTime(isWideKey ? 0.04 : 0.075, context.currentTime)
+      clickGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + duration)
+      click.connect(clickFilter)
+      clickFilter.connect(clickGain)
+      clickGain.connect(context.destination)
+
+      const thock = context.createOscillator()
+      const thockGain = context.createGain()
+      thock.type = 'triangle'
+      thock.frequency.setValueAtTime(isWideKey ? 105 : 145 + Math.random() * 20, context.currentTime)
+      thock.frequency.exponentialRampToValueAtTime(80, context.currentTime + 0.035)
+      thockGain.gain.setValueAtTime(isWideKey ? 0.045 : 0.03, context.currentTime)
+      thockGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.04)
+      thock.connect(thockGain)
+      thockGain.connect(context.destination)
+
+      click.start()
+      thock.start()
+      thock.stop(context.currentTime + 0.045)
+      return
+    }
+
     const oscillator = context.createOscillator()
     const gain = context.createGain()
     const code = letter.toLowerCase().charCodeAt(0)
@@ -120,7 +176,24 @@ function App() {
     gain.connect(context.destination)
     oscillator.start()
     oscillator.stop(context.currentTime + 0.16)
-  }, [soundOn])
+  }, [mode, soundMode])
+
+  const speakCharacter = useCallback((value: string) => {
+    if (soundMode !== 'voice') return
+
+    const character = value.toLocaleLowerCase('es-AR')
+    if (!/^[a-zñáéíóúü0-9]$/.test(character)) return
+
+    const filename = character === 'ñ'
+      ? 'ñ'
+      : character.normalize('NFD').replace(/\p{Diacritic}/gu, '')
+    if (!/^[a-zñ0-9]$/.test(filename)) return
+
+    characterAudio.current?.pause()
+    const audio = new Audio(`${import.meta.env.BASE_URL}audio/characters/${filename}.mp3?v=7`)
+    characterAudio.current = audio
+    void audio.play().catch(() => undefined)
+  }, [soundMode])
 
   const addPop = useCallback((value: string) => {
     const id = nextId.current++
@@ -188,6 +261,7 @@ function App() {
         }
         setText((current) => current.slice(0, -1))
         setLastKey('⌫')
+        if (mode === 'writer') playNote('Backspace')
         return
       }
 
@@ -201,7 +275,7 @@ function App() {
         setText((current) => `${current}\n`.slice(-280))
         setLastKey('↵')
         addPop('★')
-        playNote('m')
+        playNote(mode === 'writer' ? 'Enter' : 'm')
         return
       }
 
@@ -212,6 +286,7 @@ function App() {
         setLastKey(typedValue === ' ' ? 'espacio' : typedValue)
         addPop(typedValue)
         playNote(typedValue)
+        speakCharacter(typedValue)
       }
     }
 
@@ -233,7 +308,7 @@ function App() {
       window.removeEventListener('keyup', handleKeyUp, { capture: true })
       window.removeEventListener('contextmenu', blockContextMenu)
     }
-  }, [addPop, finishFullscreenSetup, mode, playNote, showFullscreenHelp, showSettings, uppercaseOnly])
+  }, [addPop, finishFullscreenSetup, mode, playNote, showFullscreenHelp, showSettings, speakCharacter, uppercaseOnly])
 
   useEffect(() => {
     if (!protectedKey) return
@@ -307,6 +382,8 @@ function App() {
 
   const changeMode = (nextMode: PlayMode) => {
     setMode(nextMode)
+    setSoundType(nextMode === 'writer' ? 'tone' : 'voice')
+    setSoundEnabled(nextMode === 'preschool')
     setText('')
     setPops([])
     setLastKey(nextMode === 'words' ? (uppercaseOnly ? '¡HOLA!' : '¡Hola!') : '')
@@ -334,7 +411,15 @@ function App() {
     }
   }
 
+  const cycleSoundMode = () => {
+    if (mode === 'writer') return
+    setSoundType((current) => current === 'voice' ? 'tone' : 'voice')
+  }
+  const toggleSound = () => setSoundEnabled((current) => !current)
+
   const copy = MODE_COPY[mode]
+  const soundLabel = soundEnabled ? (soundType === 'voice' ? 'Voz' : 'Tonos') : 'Silencio'
+  const nextSoundLabel = soundType === 'voice' ? 'tonos' : 'lectura de letras'
 
   return (
     <main className="app-shell">
@@ -355,17 +440,16 @@ function App() {
         </button>
         <button
           type="button"
-          className={soundOn ? 'quick-control sound-control active' : 'quick-control sound-control muted'}
+          className={soundMode !== 'off' ? 'quick-control sound-control active' : 'quick-control sound-control muted'}
           onClick={(event) => {
-            setSoundOn((value) => !value)
+            toggleSound()
             event.currentTarget.blur()
             document.getElementById('playground')?.focus({ preventScroll: true })
           }}
-          aria-pressed={soundOn}
-          aria-label={soundOn ? 'Silenciar sonidos' : 'Activar sonidos'}
-          title={soundOn ? 'Sonido activado' : 'Sonido desactivado'}
+          aria-label={soundEnabled ? `Silenciar ${soundLabel.toLowerCase()}` : `Activar ${soundType === 'voice' ? 'voz' : 'tonos'}`}
+          title={`Audio: ${soundLabel}`}
         >
-          <span aria-hidden="true">♫</span>
+          <span aria-hidden="true">{soundType === 'voice' ? 'Aa' : '♫'}</span>
         </button>
         <button
           type="button"
@@ -416,8 +500,8 @@ function App() {
         </div>
 
         <div className="header-actions">
-          <button className="icon-button" type="button" onClick={() => setSoundOn((value) => !value)} aria-label={soundOn ? 'Desactivar sonido' : 'Activar sonido'}>
-            {soundOn ? '♫' : '♩'}
+          <button className="icon-button" type="button" onClick={toggleSound} aria-label={soundEnabled ? 'Silenciar audio' : 'Activar audio'}>
+            {soundEnabled ? (soundType === 'voice' ? 'Aa' : '♫') : '♩'}
           </button>
           <button className="fullscreen-button" type="button" onClick={() => prepareFullscreen(false)}>
             <span aria-hidden="true">{isFullscreen ? '↙' : '↗'}</span>
@@ -483,7 +567,7 @@ function App() {
         )}
 
         {mode === 'writer' && (
-          <div className="writer-paper" aria-live="polite">
+          <div ref={writerPaper} className="writer-paper" aria-live="polite">
             {text ? <span>{text}</span> : <span className="placeholder">Había una vez…</span>}
             <span className="cursor" aria-hidden="true" />
           </div>
@@ -549,11 +633,27 @@ function App() {
             </div>
 
             <div className="settings-section settings-controls">
-              <button type="button" onClick={() => setSoundOn((value) => !value)}>
-                <span aria-hidden="true">{soundOn ? '♫' : '♩'}</span>
-                <span><strong>Sonido</strong><small>{soundOn ? 'Activado' : 'Desactivado'}</small></span>
-                <i className={soundOn ? 'switch on' : 'switch'} aria-hidden="true" />
-              </button>
+              <div className="audio-setting">
+                {mode === 'writer' ? (
+                  <div className="audio-mode-label">
+                    <span aria-hidden="true">♫</span>
+                    <span><strong>Audio: Tonos</strong><small>Sonidos de teclado</small></span>
+                  </div>
+                ) : (
+                  <button type="button" className="audio-mode-button" onClick={cycleSoundMode}>
+                    <span aria-hidden="true">{soundType === 'voice' ? 'Aa' : '♫'}</span>
+                    <span><strong>Audio: {soundType === 'voice' ? 'Lectura de letras' : 'Tonos'}</strong><small>Cambiar a {nextSoundLabel}</small></span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={soundEnabled ? 'switch on' : 'switch'}
+                  onClick={toggleSound}
+                  role="switch"
+                  aria-checked={soundEnabled}
+                  aria-label={soundEnabled ? 'Silenciar audio' : 'Activar audio'}
+                />
+              </div>
               <button type="button" onClick={() => setTheme((current) => current === 'light' ? 'dark' : 'light')} aria-pressed={theme === 'dark'}>
                 <span aria-hidden="true">{theme === 'dark' ? '☾' : '☀'}</span>
                 <span><strong>Modo oscuro</strong><small>{theme === 'dark' ? 'Activado' : 'Desactivado'}</small></span>
