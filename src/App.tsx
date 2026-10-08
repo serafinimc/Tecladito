@@ -76,11 +76,6 @@ type ProtectedKey = {
   startedAt: number
 }
 
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>
-}
-
 function App() {
   const [mode, setMode] = useState<PlayMode>('preschool')
   const [hasStartedPlaying, setHasStartedPlaying] = useState(false)
@@ -106,7 +101,6 @@ function App() {
   const [protectionProgress, setProtectionProgress] = useState(0)
   const [releasedKey, setReleasedKey] = useState('')
   const [pops, setPops] = useState<LetterPop[]>([])
-  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const nextId = useRef(0)
   const audioContext = useRef<AudioContext | null>(null)
   const characterAudio = useRef<HTMLAudioElement | null>(null)
@@ -131,21 +125,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem('tecladito-scene', scene)
   }, [scene])
-
-  useEffect(() => {
-    const captureInstallPrompt = (event: Event) => {
-      event.preventDefault()
-      setInstallPrompt(event as BeforeInstallPromptEvent)
-    }
-    const clearInstallPrompt = () => setInstallPrompt(null)
-
-    window.addEventListener('beforeinstallprompt', captureInstallPrompt)
-    window.addEventListener('appinstalled', clearInstallPrompt)
-    return () => {
-      window.removeEventListener('beforeinstallprompt', captureInstallPrompt)
-      window.removeEventListener('appinstalled', clearInstallPrompt)
-    }
-  }, [])
 
   useEffect(() => {
     if (soundMode === 'voice') return
@@ -468,13 +447,6 @@ function App() {
   }
   const toggleSound = () => setSoundEnabled((current) => !current)
 
-  const installApp = async () => {
-    if (!installPrompt) return
-    await installPrompt.prompt()
-    await installPrompt.userChoice
-    setInstallPrompt(null)
-  }
-
   const copy = MODE_COPY[mode]
   const sceneDecorations = SCENE_DECORATIONS[scene]
   const scenePattern = SCENE_PATTERNS[scene]
@@ -633,7 +605,7 @@ function App() {
 
         {mode === 'writer' && (
           <div ref={writerPaper} className="writer-paper" aria-live="polite">
-            {text ? <span>{text}</span> : <span className="placeholder">Había una vez…</span>}
+            {text ? <span>{text}</span> : <span className="placeholder">Empezá a escribir…</span>}
             <span className="cursor" aria-hidden="true" />
           </div>
         )}
@@ -752,13 +724,6 @@ function App() {
                 <span><strong>Solo mayúsculas</strong><small>{uppercaseOnly ? 'Activado' : 'Mayúsculas y minúsculas'}</small></span>
                 <i className={uppercaseOnly ? 'switch on' : 'switch'} aria-hidden="true" />
               </button>
-              {installPrompt && (
-                <button className="install-setting" type="button" onClick={installApp}>
-                  <span aria-hidden="true">↓</span>
-                  <span><strong>Instalar Tecladito</strong><small>Guardarlo como una aplicación</small></span>
-                  <b aria-hidden="true">›</b>
-                </button>
-              )}
               <button className="fullscreen-setting" type="button" onClick={() => prepareFullscreen(true)}>
                 <span aria-hidden="true">↗</span>
                 <span><strong>Activar pantalla completa</strong><small>Prepara la tecla F11</small></span>

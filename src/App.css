@@ -190,7 +190,7 @@ body { overflow: hidden; }
 .settings-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .settings-controls > button, .audio-setting { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 15px; border: 1px solid var(--border); border-radius: 18px; color: var(--text-secondary); background: var(--surface); text-align: left; }
 .settings-controls > button { cursor: pointer; }
-.settings-controls > .fullscreen-setting, .settings-controls > .install-setting { grid-column: 1 / -1; }
+.settings-controls > .fullscreen-setting { grid-column: 1 / -1; }
 .settings-controls > button > span:first-child, .audio-mode-button > span:first-child, .audio-mode-label > span:first-child { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 13px; color: var(--brand); background: var(--surface-icon); font-size: 20px; font-weight: 900; }
 .audio-setting { grid-template-columns: 1fr auto; }
 .audio-mode-button, .audio-mode-label { min-width: 0; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 12px; padding: 0; border: 0; color: inherit; background: transparent; text-align: left; }

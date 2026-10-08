@@ -32,7 +32,7 @@ Teclas especiales como `Esc`, `Ctrl`, `Alt`, `Windows` y las teclas de función 
 
 ## Instalación como aplicación
 
-Tecladito es una Progressive Web App (PWA). En navegadores compatibles aparece la opción **Instalar Tecladito** dentro del menú de configuración. Una vez instalada se abre en una ventana independiente y puede iniciarse desde el escritorio o el menú de aplicaciones.
+Tecladito es una Progressive Web App (PWA). En navegadores compatibles puede instalarse desde el icono de la barra de direcciones o desde el menú del navegador. Una vez instalada se abre en una ventana independiente y puede iniciarse desde el escritorio o el menú de aplicaciones.
 
 La aplicación incluye:
 
