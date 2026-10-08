@@ -63,9 +63,15 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((names) => Promise.all(names
-        .filter((name) => (name.startsWith(CACHE_PREFIX) && name !== CACHE_NAME) || LEGACY_CACHE_NAMES.has(name))
-        .map((name) => caches.delete(name))))
+      .then((names) => {
+        const previousCaches = names.filter((name) => name.startsWith(CACHE_PREFIX) && name !== CACHE_NAME)
+        const previousCache = previousCaches[previousCaches.length - 1]
+        const cachesToDelete = names.filter((name) => (
+          (name.startsWith(CACHE_PREFIX) && name !== CACHE_NAME && name !== previousCache)
+          || (previousCache && LEGACY_CACHE_NAMES.has(name))
+        ))
+        return Promise.all(cachesToDelete.map((name) => caches.delete(name)))
+      })
       .then(() => SHOULD_CLAIM_CLIENTS ? self.clients.claim() : undefined),
   )
 })
@@ -77,18 +83,28 @@ self.addEventListener('fetch', (event) => {
   if (request.mode !== 'navigate' && !PRECACHE_PATHS.has(url.pathname)) return
 
   const serveRequest = async () => {
-    const cache = await caches.open(CACHE_NAME)
-
     if (request.mode === 'navigate') {
-      return (await cache.match('/index.html')) ?? fetch(request)
+      try {
+        const cache = await caches.open(CACHE_NAME)
+        const cachedIndex = await cache.match('/index.html')
+        if (cachedIndex) return cachedIndex
+      } catch {
+        // Cache Storage can be unavailable or evicted; online navigation must still work.
+      }
+      return fetch(request)
     }
 
-    const isAudio = url.pathname.startsWith('/audio/characters/')
-    const cacheKey = isAudio ? url.pathname : request
-    const cached = await cache.match(cacheKey)
-    if (!cached) return fetch(request)
+    try {
+      const cache = await caches.open(CACHE_NAME)
+      const isAudio = url.pathname.startsWith('/audio/characters/')
+      const cacheKey = isAudio ? url.pathname : request
+      const cached = await cache.match(cacheKey)
+      if (cached) return isAudio ? await createRangeResponse(request, cached) : cached
+    } catch {
+      // Fall through to the network when a cached response cannot be read.
+    }
 
-    return isAudio ? createRangeResponse(request, cached) : cached
+    return fetch(request)
   }
 
   event.respondWith(serveRequest())
