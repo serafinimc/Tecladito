@@ -113,6 +113,7 @@ function App() {
   const [practiceFeedback, setPracticeFeedback] = useState<'ready' | 'correct' | 'wrong'>('ready')
   const practiceTimer = useRef<number | null>(null)
   const practiceAudio = useRef<HTMLAudioElement | null>(null)
+  const practicePromptId = useRef(0)
   const practiceTargetRef = useRef(practiceTarget)
   useEffect(() => {
     practiceTargetRef.current = practiceTarget
@@ -129,6 +130,7 @@ function App() {
 
   useEffect(() => () => {
     if (practiceTimer.current !== null) window.clearTimeout(practiceTimer.current)
+    practicePromptId.current += 1
     practiceAudio.current?.pause()
     if (settingsHoldTimer.current !== null) window.clearInterval(settingsHoldTimer.current)
   }, [])
@@ -243,21 +245,37 @@ function App() {
     void audio.play().catch(() => undefined)
   }, [soundMode])
 
-  const playPracticeAudio = useCallback((value: string) => {
+  const speakPracticePrompt = useCallback((value: string) => {
+    practicePromptId.current += 1
+    const promptId = practicePromptId.current
     practiceAudio.current?.pause()
-    const filename = value.toLocaleLowerCase('es-AR')
-    const audio = new Audio(`${import.meta.env.BASE_URL}audio/characters/${encodeURIComponent(filename)}.mp3?v=7`)
-    practiceAudio.current = audio
-    void audio.play().catch(() => undefined)
+    let targetStarted = false
+
+    const playTargetAudio = () => {
+      if (practicePromptId.current !== promptId || targetStarted) return
+      targetStarted = true
+      const filename = value.toLocaleLowerCase('es-AR')
+      const audio = new Audio(`${import.meta.env.BASE_URL}audio/characters/${encodeURIComponent(filename)}.mp3?v=7`)
+      practiceAudio.current = audio
+      void audio.play().catch(() => undefined)
+    }
+
+    const promptFilename = /^\d$/.test(value) ? 'donde-esta-el-numero' : 'donde-esta-la-letra'
+    const promptAudio = new Audio(`${import.meta.env.BASE_URL}audio/prompts/${promptFilename}.mp3?v=2`)
+    practiceAudio.current = promptAudio
+    promptAudio.onended = playTargetAudio
+    promptAudio.onerror = playTargetAudio
+    void promptAudio.play().catch(playTargetAudio)
   }, [])
 
   useEffect(() => {
     if (mode !== 'repeat' || showSettings || showFullscreenHelp) {
+      practicePromptId.current += 1
       practiceAudio.current?.pause()
       return
     }
-    playPracticeAudio(practiceTarget)
-  }, [mode, practiceTarget, showSettings, showFullscreenHelp, playPracticeAudio])
+    speakPracticePrompt(practiceTarget)
+  }, [mode, practiceTarget, showSettings, showFullscreenHelp, speakPracticePrompt])
 
   const addPop = useCallback((value: string) => {
     const id = nextId.current++
@@ -674,10 +692,10 @@ function App() {
             <div className="practice-score">Aciertos: {practiceScore}</div>
             <h2>¡Escuchá y buscá la tecla!</h2>
             <button type="button" className="practice-listen" onClick={(event) => {
-              playPracticeAudio(practiceTarget)
+              speakPracticePrompt(practiceTarget)
               event.currentTarget.blur()
               document.getElementById('playground')?.focus({ preventScroll: true })
-            }} aria-label="Volver a escuchar la letra">♫</button>
+            }} aria-label="Volver a escuchar la consigna">♫</button>
             <p>{practiceFeedback === 'correct' ? '¡Muy bien! ✨' : practiceFeedback === 'wrong' ? '¡Probá otra vez!' : 'Presioná la tecla que escuchaste'}</p>
             {practiceFeedback === 'correct' && <strong className="practice-answer">{practiceTarget}</strong>}
           </div>
