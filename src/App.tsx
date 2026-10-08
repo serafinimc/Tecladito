@@ -659,11 +659,6 @@ function App() {
                 <span><strong>Modo oscuro</strong><small>{theme === 'dark' ? 'Activado' : 'Desactivado'}</small></span>
                 <i className={theme === 'dark' ? 'switch on' : 'switch'} aria-hidden="true" />
               </button>
-              <button type="button" onClick={() => prepareFullscreen(true)}>
-                <span aria-hidden="true">↗</span>
-                <span><strong>Activar pantalla completa</strong><small>Prepara la tecla F11</small></span>
-                <b aria-hidden="true">›</b>
-              </button>
               <button type="button" onClick={toggleKeepLetters}>
                 <span aria-hidden="true">◎</span>
                 <span><strong>Mantener letras</strong><small>{keepLetters ? 'Quedan en pantalla' : 'Desaparecen solas'}</small></span>
@@ -673,6 +668,11 @@ function App() {
                 <span className="letters-setting" aria-hidden="true">AA</span>
                 <span><strong>Solo mayúsculas</strong><small>{uppercaseOnly ? 'Activado' : 'Mayúsculas y minúsculas'}</small></span>
                 <i className={uppercaseOnly ? 'switch on' : 'switch'} aria-hidden="true" />
+              </button>
+              <button className="fullscreen-setting" type="button" onClick={() => prepareFullscreen(true)}>
+                <span aria-hidden="true">↗</span>
+                <span><strong>Activar pantalla completa</strong><small>Prepara la tecla F11</small></span>
+                <b aria-hidden="true">›</b>
               </button>
             </div>
 
