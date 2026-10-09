@@ -21,10 +21,13 @@ type LetterPop = {
 }
 
 type PlayMode = 'preschool' | 'words' | 'writer' | 'repeat'
+type PracticeScope = 'numbers' | 'all'
 const PRACTICE_KEYS = 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ0123456789'.split('')
-const PRACTICE_PRAISES = ['muy-bien', 'excelente', 'perfecto', 'genial', 'si', 'lo-encontraste']
-const choosePracticeKey = (previous = '') => {
-  const candidates = PRACTICE_KEYS.filter((key) => key !== previous)
+const PRACTICE_NUMBERS = '0123456789'.split('')
+const PRACTICE_PRAISES = ['muy-bien', 'excelente', 'perfecto', 'genial', 'si', 'eso']
+const choosePracticeKey = (previous = '', scope: PracticeScope = 'all') => {
+  const availableKeys = scope === 'numbers' ? PRACTICE_NUMBERS : PRACTICE_KEYS
+  const candidates = availableKeys.filter((key) => key !== previous)
   return candidates[Math.floor(Math.random() * candidates.length)]
 }
 type Theme = 'light' | 'dark'
@@ -109,7 +112,8 @@ function App() {
   const [protectionProgress, setProtectionProgress] = useState(0)
   const [releasedKey, setReleasedKey] = useState('')
   const [pops, setPops] = useState<LetterPop[]>([])
-  const [practiceTarget, setPracticeTarget] = useState(() => choosePracticeKey())
+  const [practiceScope, setPracticeScope] = useState<PracticeScope>(() => localStorage.getItem('tecladito-practice-scope') === 'numbers' ? 'numbers' : 'all')
+  const [practiceTarget, setPracticeTarget] = useState(() => choosePracticeKey('', practiceScope))
   const [practiceScore, setPracticeScore] = useState(0)
   const [practiceFeedback, setPracticeFeedback] = useState<'ready' | 'correct' | 'wrong'>('ready')
   const practiceTimer = useRef<number | null>(null)
@@ -123,6 +127,7 @@ function App() {
   const nextId = useRef(0)
   const audioContext = useRef<AudioContext | null>(null)
   const characterAudio = useRef<HTMLAudioElement | null>(null)
+  const wordsPaper = useRef<HTMLDivElement | null>(null)
   const writerPaper = useRef<HTMLDivElement | null>(null)
   const heldKeys = useRef(new Map<string, number>())
   const unlockedUntil = useRef(new Map<string, number>())
@@ -149,6 +154,10 @@ function App() {
   }, [scene])
 
   useEffect(() => {
+    localStorage.setItem('tecladito-practice-scope', practiceScope)
+  }, [practiceScope])
+
+  useEffect(() => {
     if (soundMode === 'voice') return
     characterAudio.current?.pause()
     characterAudio.current = null
@@ -157,6 +166,11 @@ function App() {
   useEffect(() => {
     if (mode !== 'writer' || !writerPaper.current) return
     writerPaper.current.scrollTop = writerPaper.current.scrollHeight
+  }, [mode, text])
+
+  useEffect(() => {
+    if (mode !== 'words' || !wordsPaper.current) return
+    wordsPaper.current.scrollTop = wordsPaper.current.scrollHeight
   }, [mode, text])
 
   const finishFullscreenSetup = useCallback(() => {
@@ -242,42 +256,18 @@ function App() {
     if (!/^[a-zñ0-9]$/.test(filename)) return
 
     characterAudio.current?.pause()
-    const audio = new Audio(`${import.meta.env.BASE_URL}audio/characters/${filename}.mp3?v=7`)
+    const audio = new Audio(`${import.meta.env.BASE_URL}audio/characters/${filename}.mp3?v=8`)
     characterAudio.current = audio
     void audio.play().catch(() => undefined)
   }, [soundMode])
 
   const speakPracticePrompt = useCallback((value: string) => {
     practicePromptId.current += 1
-    const promptId = practicePromptId.current
     practiceAudio.current?.pause()
-    let targetStarted = false
     const filename = value.toLocaleLowerCase('es-AR')
-    const targetAudio = new Audio(`${import.meta.env.BASE_URL}audio/characters/${encodeURIComponent(filename)}.mp3?v=7`)
-    targetAudio.preload = 'auto'
-    targetAudio.load()
-
-    const playTargetAudio = () => {
-      if (practicePromptId.current !== promptId || targetStarted) return
-      targetStarted = true
-
-      const startTargetAudio = () => {
-        if (practicePromptId.current !== promptId) return
-        targetAudio.currentTime = filename === 'o' ? 0.06 : 0.15
-        practiceAudio.current = targetAudio
-        void targetAudio.play().catch(() => undefined)
-      }
-
-      if (targetAudio.readyState >= HTMLMediaElement.HAVE_METADATA) startTargetAudio()
-      else targetAudio.addEventListener('loadedmetadata', startTargetAudio, { once: true })
-    }
-
-    const promptFilename = /^\d$/.test(value) ? 'busquemos-el-numero' : 'busquemos-la-letra'
-    const promptAudio = new Audio(`${import.meta.env.BASE_URL}audio/prompts/${promptFilename}.mp3?v=2`)
+    const promptAudio = new Audio(`${import.meta.env.BASE_URL}audio/prompts/${encodeURIComponent(filename)}.mp3?v=3`)
     practiceAudio.current = promptAudio
-    promptAudio.onended = playTargetAudio
-    promptAudio.onerror = playTargetAudio
-    void promptAudio.play().catch(playTargetAudio)
+    void promptAudio.play().catch(() => undefined)
   }, [])
 
   const playPracticePraise = useCallback(() => {
@@ -287,35 +277,19 @@ function App() {
     practicePromptId.current += 1
     practiceAudio.current?.pause()
 
-    const audio = new Audio(`${import.meta.env.BASE_URL}audio/praise/${praise}.mp3?v=3`)
+    const audio = new Audio(`${import.meta.env.BASE_URL}audio/praise/${praise}.mp3?v=4`)
     practiceAudio.current = audio
     void audio.play().catch(() => undefined)
   }, [])
 
   const playPracticeCorrection = useCallback((value: string) => {
     practicePromptId.current += 1
-    const promptId = practicePromptId.current
     practiceAudio.current?.pause()
 
     const filename = value.toLocaleLowerCase('es-AR')
-    const answerAudio = new Audio(`${import.meta.env.BASE_URL}audio/characters/${encodeURIComponent(filename)}.mp3?v=7`)
-    answerAudio.preload = 'auto'
-    answerAudio.load()
-    let characterStarted = false
-
-    const playCharacter = () => {
-      if (practicePromptId.current !== promptId || characterStarted) return
-      characterStarted = true
-      practiceAudio.current = answerAudio
-      void answerAudio.play().catch(() => undefined)
-    }
-
-    const introFilename = /^\d$/.test(value) ? 'ese-es-el-numero' : 'esa-es-la-letra'
-    const introAudio = new Audio(`${import.meta.env.BASE_URL}audio/feedback/${introFilename}.mp3?v=5`)
-    practiceAudio.current = introAudio
-    introAudio.onended = playCharacter
-    introAudio.onerror = playCharacter
-    void introAudio.play().catch(playCharacter)
+    const feedbackAudio = new Audio(`${import.meta.env.BASE_URL}audio/feedback/${encodeURIComponent(filename)}.mp3?v=6`)
+    practiceAudio.current = feedbackAudio
+    void feedbackAudio.play().catch(() => undefined)
   }, [])
 
   useEffect(() => {
@@ -397,7 +371,7 @@ function App() {
           if (practiceTimer.current !== null) window.clearTimeout(practiceTimer.current)
           practiceTimer.current = window.setTimeout(() => {
             setPracticeFeedback('ready')
-            setPracticeTarget((current) => choosePracticeKey(current))
+            setPracticeTarget((current) => choosePracticeKey(current, practiceScope))
           }, 1500)
         } else {
           setPracticeFeedback('wrong')
@@ -427,7 +401,7 @@ function App() {
           playNote('m')
           return
         }
-        setText((current) => `${current}\n`.slice(-280))
+        setText((current) => `${current}\n`.slice(-600))
         setLastKey('↵')
         addPop('★')
         playNote(mode === 'writer' ? 'Enter' : 'm')
@@ -463,7 +437,7 @@ function App() {
       window.removeEventListener('keyup', handleKeyUp, { capture: true })
       window.removeEventListener('contextmenu', blockContextMenu)
     }
-  }, [addPop, finishFullscreenSetup, mode, playNote, playPracticeCorrection, playPracticePraise, showFullscreenHelp, showSettings, speakCharacter, uppercaseOnly, practiceFeedback])
+  }, [addPop, finishFullscreenSetup, mode, playNote, playPracticeCorrection, playPracticePraise, practiceFeedback, practiceScope, showFullscreenHelp, showSettings, speakCharacter, uppercaseOnly])
 
   useEffect(() => {
     if (!protectedKey) return
@@ -542,7 +516,7 @@ function App() {
     if (practiceTimer.current !== null) window.clearTimeout(practiceTimer.current)
     setPracticeFeedback('ready')
     setPracticeScore(0)
-    setPracticeTarget(choosePracticeKey())
+    setPracticeTarget(choosePracticeKey('', practiceScope))
     setText('')
     setPops([])
     setLastKey(nextMode === 'words' ? (uppercaseOnly ? '¡HOLA!' : '¡Hola!') : '')
@@ -553,7 +527,7 @@ function App() {
       if (practiceTimer.current !== null) window.clearTimeout(practiceTimer.current)
       setPracticeScore(0)
       setPracticeFeedback('ready')
-      setPracticeTarget((current) => choosePracticeKey(current))
+      setPracticeTarget((current) => choosePracticeKey(current, practiceScope))
       return
     }
     setText('')
@@ -582,6 +556,15 @@ function App() {
     setSoundType((current) => current === 'voice' ? 'tone' : 'voice')
   }
   const toggleSound = () => setSoundEnabled((current) => !current)
+
+  const changePracticeScope = (nextScope: PracticeScope) => {
+    if (nextScope === practiceScope) return
+    if (practiceTimer.current !== null) window.clearTimeout(practiceTimer.current)
+    setPracticeScope(nextScope)
+    setPracticeScore(0)
+    setPracticeFeedback('ready')
+    setPracticeTarget(choosePracticeKey('', nextScope))
+  }
 
   const copy = MODE_COPY[mode]
   const sceneDecorations = SCENE_DECORATIONS[scene]
@@ -732,9 +715,11 @@ function App() {
         {mode === 'words' && (
           <>
             <div className={lastKey.length === 1 ? 'key-display' : 'key-display key-display-label'} aria-live="polite">{lastKey}</div>
-            <div className="typed-paper">
-              {text ? <span>{text}</span> : <span className="placeholder">Empezá a escribir…</span>}
-              <span className="cursor" aria-hidden="true" />
+            <div ref={wordsPaper} className="typed-paper">
+              <span className="typed-content">
+                {text || <span className="placeholder">Empezá a escribir…</span>}
+                <span className="cursor" aria-hidden="true" />
+              </span>
             </div>
           </>
         )}
@@ -816,6 +801,29 @@ function App() {
                   </button>
                 ))}
               </div>
+              {mode === 'repeat' && (
+                <div className="practice-scope-setting">
+                  <strong>Teclas del juego</strong>
+                  <div className="practice-scope-options" role="group" aria-label="Teclas incluidas en Escuchá y encontrá">
+                    <button
+                      type="button"
+                      className={practiceScope === 'numbers' ? 'active' : ''}
+                      onClick={() => changePracticeScope('numbers')}
+                      aria-pressed={practiceScope === 'numbers'}
+                    >
+                      Solo números
+                    </button>
+                    <button
+                      type="button"
+                      className={practiceScope === 'all' ? 'active' : ''}
+                      onClick={() => changePracticeScope('all')}
+                      aria-pressed={practiceScope === 'all'}
+                    >
+                      Letras y números
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="settings-section">
