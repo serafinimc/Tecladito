@@ -311,7 +311,7 @@ function App() {
     }
 
     const introFilename = /^\d$/.test(value) ? 'ese-es-el-numero' : 'esa-es-la-letra'
-    const introAudio = new Audio(`${import.meta.env.BASE_URL}audio/feedback/${introFilename}.mp3?v=2`)
+    const introAudio = new Audio(`${import.meta.env.BASE_URL}audio/feedback/${introFilename}.mp3?v=3`)
     practiceAudio.current = introAudio
     introAudio.onended = playCharacter
     introAudio.onerror = playCharacter
