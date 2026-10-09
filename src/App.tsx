@@ -114,7 +114,6 @@ function App() {
   const [practiceFeedback, setPracticeFeedback] = useState<'ready' | 'correct' | 'wrong'>('ready')
   const practiceTimer = useRef<number | null>(null)
   const practiceAudio = useRef<HTMLAudioElement | null>(null)
-  const practicePromptId = useRef(0)
   const lastPracticePraise = useRef('')
   const practiceTargetRef = useRef(practiceTarget)
   useEffect(() => {
@@ -132,7 +131,6 @@ function App() {
 
   useEffect(() => () => {
     if (practiceTimer.current !== null) window.clearTimeout(practiceTimer.current)
-    practicePromptId.current += 1
     practiceAudio.current?.pause()
     if (settingsHoldTimer.current !== null) window.clearInterval(settingsHoldTimer.current)
   }, [])
@@ -248,43 +246,18 @@ function App() {
   }, [soundMode])
 
   const speakPracticePrompt = useCallback((value: string) => {
-    practicePromptId.current += 1
-    const promptId = practicePromptId.current
     practiceAudio.current?.pause()
-    let targetStarted = false
     const filename = value.toLocaleLowerCase('es-AR')
-    const targetAudio = new Audio(`${import.meta.env.BASE_URL}audio/characters/${encodeURIComponent(filename)}.mp3?v=7`)
-    targetAudio.preload = 'auto'
-    targetAudio.load()
-
-    const playTargetAudio = () => {
-      if (practicePromptId.current !== promptId || targetStarted) return
-      targetStarted = true
-
-      const startTargetAudio = () => {
-        if (practicePromptId.current !== promptId) return
-        targetAudio.currentTime = filename === 'o' ? 0.06 : 0.15
-        practiceAudio.current = targetAudio
-        void targetAudio.play().catch(() => undefined)
-      }
-
-      if (targetAudio.readyState >= HTMLMediaElement.HAVE_METADATA) startTargetAudio()
-      else targetAudio.addEventListener('loadedmetadata', startTargetAudio, { once: true })
-    }
-
-    const promptFilename = /^\d$/.test(value) ? 'podes-encontrar-el-numero' : 'podes-encontrar-la-letra'
-    const promptAudio = new Audio(`${import.meta.env.BASE_URL}audio/prompts/${promptFilename}.mp3?v=4`)
+    const promptKind = /^\d$/.test(value) ? 'numero' : 'letra'
+    const promptAudio = new Audio(`${import.meta.env.BASE_URL}audio/prompts/${promptKind}-${encodeURIComponent(filename)}.mp3?v=5`)
     practiceAudio.current = promptAudio
-    promptAudio.onended = playTargetAudio
-    promptAudio.onerror = playTargetAudio
-    void promptAudio.play().catch(playTargetAudio)
+    void promptAudio.play().catch(() => undefined)
   }, [])
 
   const playPracticePraise = useCallback(() => {
     const candidates = PRACTICE_PRAISES.filter((praise) => praise !== lastPracticePraise.current)
     const praise = candidates[Math.floor(Math.random() * candidates.length)]
     lastPracticePraise.current = praise
-    practicePromptId.current += 1
     practiceAudio.current?.pause()
 
     const audio = new Audio(`${import.meta.env.BASE_URL}audio/praise/${praise}.mp3?v=1`)
@@ -294,7 +267,6 @@ function App() {
 
   useEffect(() => {
     if (mode !== 'repeat' || showSettings || showFullscreenHelp) {
-      practicePromptId.current += 1
       practiceAudio.current?.pause()
       return
     }
