@@ -299,32 +299,19 @@ function App() {
 
     const filename = value.toLocaleLowerCase('es-AR')
     const answerAudio = new Audio(`${import.meta.env.BASE_URL}audio/characters/${encodeURIComponent(filename)}.mp3?v=7`)
-    const retryAudio = new Audio(`${import.meta.env.BASE_URL}audio/feedback/intentemos-de-nuevo.mp3?v=1`)
     answerAudio.preload = 'auto'
-    retryAudio.preload = 'auto'
     answerAudio.load()
-    retryAudio.load()
     let characterStarted = false
-    let retryStarted = false
-
-    const playRetry = () => {
-      if (practicePromptId.current !== promptId || retryStarted) return
-      retryStarted = true
-      practiceAudio.current = retryAudio
-      void retryAudio.play().catch(() => undefined)
-    }
 
     const playCharacter = () => {
       if (practicePromptId.current !== promptId || characterStarted) return
       characterStarted = true
       practiceAudio.current = answerAudio
-      answerAudio.onended = playRetry
-      answerAudio.onerror = playRetry
-      void answerAudio.play().catch(playRetry)
+      void answerAudio.play().catch(() => undefined)
     }
 
     const introFilename = /^\d$/.test(value) ? 'ese-es-el-numero' : 'esa-es-la-letra'
-    const introAudio = new Audio(`${import.meta.env.BASE_URL}audio/feedback/${introFilename}.mp3?v=1`)
+    const introAudio = new Audio(`${import.meta.env.BASE_URL}audio/feedback/${introFilename}.mp3?v=2`)
     practiceAudio.current = introAudio
     introAudio.onended = playCharacter
     introAudio.onerror = playCharacter
