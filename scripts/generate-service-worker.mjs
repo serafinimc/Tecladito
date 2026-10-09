@@ -28,15 +28,17 @@ const precacheFiles = allFiles
   .filter((path) => path !== 'sw.js' && path !== 'favicon_backup.svg' && !isUnusedAudioSource(path))
   .sort()
 
+const template = await readFile(serviceWorkerPath, 'utf8')
+const precacheUrls = precacheFiles.map((path) => path === 'index.html' ? '/' : encodeURI(`/${path}`))
 const hash = createHash('sha256')
+hash.update(template)
+hash.update(JSON.stringify(precacheUrls))
 for (const path of precacheFiles) {
   hash.update(path)
   hash.update(await readFile(join(distDirectory, path)))
 }
 
 const buildId = hash.digest('hex').slice(0, 16)
-const precacheUrls = precacheFiles.map((path) => encodeURI(`/${path}`))
-const template = await readFile(serviceWorkerPath, 'utf8')
 const output = template
   .replace('__TECLADITO_BUILD_ID__', buildId)
   .replace('__TECLADITO_PRECACHE_MANIFEST__', JSON.stringify(precacheUrls, null, 2))

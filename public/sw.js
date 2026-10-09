@@ -96,11 +96,11 @@ self.addEventListener('fetch', (event) => {
     const cache = await caches.open(CACHE_NAME)
 
     if (request.mode === 'navigate') {
-      const appShell = await cache.match('/index.html')
+      const appShell = await cache.match('/')
       return appShell ?? fetch(request)
     }
 
-    const cached = await cache.match(request, { ignoreSearch: true })
+    const cached = await cache.match(request, { ignoreSearch: true, ignoreVary: true })
     if (cached) {
       return request.headers.has('range') ? createRangeResponse(request, cached) : cached
     }
