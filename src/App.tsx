@@ -25,6 +25,22 @@ type PracticeScope = 'numbers' | 'all'
 const PRACTICE_KEYS = 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ0123456789'.split('')
 const PRACTICE_NUMBERS = '0123456789'.split('')
 const PRACTICE_PRAISES = ['muy-bien', 'excelente', 'perfecto', 'genial', 'si', 'eso']
+const FIREWORK_ZONES = [
+  { x: 15, y: 24 },
+  { x: 84, y: 21 },
+  { x: 27, y: 70 },
+  { x: 73, y: 68 },
+  { x: 49, y: 16 },
+  { x: 91, y: 49 },
+]
+const createPracticeFireworks = () => FIREWORK_ZONES.map((zone) => ({
+  x: Math.max(8, Math.min(92, zone.x - 7 + Math.random() * 14)),
+  y: Math.max(10, Math.min(82, zone.y - 7 + Math.random() * 14)),
+  delay: Math.random() * .4,
+  angleOffset: Math.random() * 22.5,
+  colorOffset: Math.floor(Math.random() * COLORS.length),
+  scale: .82 + Math.random() * .38,
+}))
 const choosePracticeKey = (previous = '', scope: PracticeScope = 'all') => {
   const availableKeys = scope === 'numbers' ? PRACTICE_NUMBERS : PRACTICE_KEYS
   const candidates = availableKeys.filter((key) => key !== previous)
@@ -87,6 +103,14 @@ type ProtectedKey = {
   startedAt: number
 }
 
+const SoundIcon = () => (
+  <svg className="sound-icon" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M4 9v6h4l5 4V5L8 9H4Z" />
+    <path d="M16 9.5a4 4 0 0 1 0 5" />
+    <path d="M18.5 7a7.5 7.5 0 0 1 0 10" />
+  </svg>
+)
+
 function App() {
   const [mode, setMode] = useState<PlayMode>('preschool')
   const [hasStartedPlaying, setHasStartedPlaying] = useState(false)
@@ -116,6 +140,7 @@ function App() {
   const [practiceTarget, setPracticeTarget] = useState(() => choosePracticeKey('', practiceScope))
   const [practiceScore, setPracticeScore] = useState(0)
   const [practiceFeedback, setPracticeFeedback] = useState<'ready' | 'correct' | 'wrong'>('ready')
+  const [practiceFireworks, setPracticeFireworks] = useState(createPracticeFireworks)
   const practiceTimer = useRef<number | null>(null)
   const practiceAudio = useRef<HTMLAudioElement | null>(null)
   const practicePromptId = useRef(0)
@@ -364,9 +389,9 @@ function App() {
         const answer = event.key.toLocaleUpperCase('es-AR')
         if (!PRACTICE_KEYS.includes(answer)) return
         if (answer === practiceTargetRef.current) {
+          setPracticeFireworks(createPracticeFireworks())
           setPracticeFeedback('correct')
           setPracticeScore((current) => current + 1)
-          addPop(answer)
           playPracticePraise()
           if (practiceTimer.current !== null) window.clearTimeout(practiceTimer.current)
           practiceTimer.current = window.setTimeout(() => {
@@ -600,7 +625,7 @@ function App() {
           aria-label={soundEnabled ? `Silenciar ${soundLabel.toLowerCase()}` : `Activar ${soundType === 'voice' ? 'voz' : 'tonos'}`}
           title={`Audio: ${soundLabel}`}
         >
-          <span aria-hidden="true">{soundType === 'voice' ? 'Aa' : '♫'}</span>
+          <SoundIcon />
         </button>
         <button
           type="button"
@@ -653,8 +678,8 @@ function App() {
         </div>
 
         <div className="header-actions">
-          <button className="icon-button" type="button" onClick={toggleSound} aria-label={soundEnabled ? 'Silenciar audio' : 'Activar audio'}>
-            {soundEnabled ? (soundType === 'voice' ? 'Aa' : '♫') : '♩'}
+          <button className={soundEnabled ? 'icon-button sound-control' : 'icon-button sound-control muted'} type="button" onClick={toggleSound} aria-label={soundEnabled ? 'Silenciar audio' : 'Activar audio'}>
+            <SoundIcon />
           </button>
           <button className="fullscreen-button" type="button" onClick={() => prepareFullscreen(false)}>
             <span aria-hidden="true">{isFullscreen ? '↙' : '↗'}</span>
@@ -725,17 +750,45 @@ function App() {
         )}
 
         {mode === 'repeat' && (
-          <div className="practice-game" aria-live="polite">
-            <div className="practice-score">Aciertos: {practiceScore}</div>
-            <h2>¡Escuchá y buscá la tecla!</h2>
-            <button type="button" className="practice-listen" onClick={(event) => {
-              speakPracticePrompt(practiceTarget)
-              event.currentTarget.blur()
-              document.getElementById('playground')?.focus({ preventScroll: true })
-            }} aria-label="Volver a escuchar la consigna">♫</button>
-            <p>{practiceFeedback === 'correct' ? '¡Muy bien! ✨' : practiceFeedback === 'wrong' ? '¡Probá otra vez!' : 'Presioná la tecla que escuchaste'}</p>
-            {practiceFeedback === 'correct' && <strong className="practice-answer">{practiceTarget}</strong>}
-          </div>
+          <>
+            {practiceFeedback === 'correct' && (
+              <div className="practice-fireworks" aria-hidden="true">
+                {practiceFireworks.map((burst, burstIndex) => (
+                  <span className="firework-burst" key={`${practiceScore}-${burstIndex}`} style={{ left: `${burst.x}%`, top: `${burst.y}%`, '--burst-delay': `${burst.delay}s`, '--burst-scale': burst.scale } as CSSProperties}>
+                    {Array.from({ length: 16 }, (_, particleIndex) => (
+                      <i
+                        key={particleIndex}
+                        style={{
+                          '--angle': `${particleIndex * 22.5 + burst.angleOffset}deg`,
+                          '--distance': `-${Math.round((125 + (particleIndex % 4) * 28) * burst.scale)}px`,
+                          '--particle-color': COLORS[(burst.colorOffset + particleIndex) % COLORS.length],
+                        } as CSSProperties}
+                      />
+                    ))}
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="practice-game" aria-live="polite">
+              <div className="practice-score">Aciertos: {practiceScore}</div>
+              <h2>¡Escuchá y buscá la tecla!</h2>
+              <button type="button" className="practice-listen" onClick={(event) => {
+                speakPracticePrompt(practiceTarget)
+                event.currentTarget.blur()
+                document.getElementById('playground')?.focus({ preventScroll: true })
+              }} aria-label="Volver a escuchar la consigna">
+                <span>Volver a escuchar</span>
+              </button>
+              <div className="practice-answer-slot">
+                {practiceFeedback === 'correct' && (
+                  <div className="practice-answer">
+                    <strong>{practiceTarget}</strong>
+                  </div>
+                )}
+              </div>
+              <p>{practiceFeedback === 'correct' ? '¡Muy bien! ✨' : practiceFeedback === 'wrong' ? '¡Probá otra vez!' : 'Presioná la tecla que escuchaste'}</p>
+            </div>
+          </>
         )}
         {mode === 'writer' && (
           <div ref={writerPaper} className="writer-paper" aria-live="polite">
