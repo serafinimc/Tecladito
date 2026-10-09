@@ -22,6 +22,7 @@ type LetterPop = {
 
 type PlayMode = 'preschool' | 'words' | 'writer' | 'repeat'
 const PRACTICE_KEYS = 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ0123456789'.split('')
+const PRACTICE_PRAISES = ['muy-bien', 'excelente', 'perfecto', 'genial', 'buen-trabajo', 'lo-encontraste']
 const choosePracticeKey = (previous = '') => {
   const candidates = PRACTICE_KEYS.filter((key) => key !== previous)
   return candidates[Math.floor(Math.random() * candidates.length)]
@@ -114,6 +115,7 @@ function App() {
   const practiceTimer = useRef<number | null>(null)
   const practiceAudio = useRef<HTMLAudioElement | null>(null)
   const practicePromptId = useRef(0)
+  const lastPracticePraise = useRef('')
   const practiceTargetRef = useRef(practiceTarget)
   useEffect(() => {
     practiceTargetRef.current = practiceTarget
@@ -268,6 +270,18 @@ function App() {
     void promptAudio.play().catch(playTargetAudio)
   }, [])
 
+  const playPracticePraise = useCallback(() => {
+    const candidates = PRACTICE_PRAISES.filter((praise) => praise !== lastPracticePraise.current)
+    const praise = candidates[Math.floor(Math.random() * candidates.length)]
+    lastPracticePraise.current = praise
+    practicePromptId.current += 1
+    practiceAudio.current?.pause()
+
+    const audio = new Audio(`${import.meta.env.BASE_URL}audio/praise/${praise}.mp3?v=1`)
+    practiceAudio.current = audio
+    void audio.play().catch(() => undefined)
+  }, [])
+
   useEffect(() => {
     if (mode !== 'repeat' || showSettings || showFullscreenHelp) {
       practicePromptId.current += 1
@@ -343,6 +357,7 @@ function App() {
           setPracticeFeedback('correct')
           setPracticeScore((current) => current + 1)
           addPop(answer)
+          playPracticePraise()
           if (practiceTimer.current !== null) window.clearTimeout(practiceTimer.current)
           practiceTimer.current = window.setTimeout(() => {
             setPracticeFeedback('ready')
@@ -411,7 +426,7 @@ function App() {
       window.removeEventListener('keyup', handleKeyUp, { capture: true })
       window.removeEventListener('contextmenu', blockContextMenu)
     }
-  }, [addPop, finishFullscreenSetup, mode, playNote, showFullscreenHelp, showSettings, speakCharacter, uppercaseOnly, practiceFeedback])
+  }, [addPop, finishFullscreenSetup, mode, playNote, playPracticePraise, showFullscreenHelp, showSettings, speakCharacter, uppercaseOnly, practiceFeedback])
 
   useEffect(() => {
     if (!protectedKey) return
