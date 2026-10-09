@@ -9,7 +9,7 @@ Este documento conserva el texto y el orden usados para generar los audios del m
 | Preguntas | `public/audio/prompts/All prompts.mp3` | 37 |
 | Felicitaciones | `public/audio/praise/All praise together.mp3` | 6 |
 | Respuestas | `public/audio/feedback/All feedback.mp3` | 37 |
-| Caracteres | `public/audio/characters/All characters.mp3` | 37 |
+| Caracteres | `public/audio/characters/letras_y_numeros/All characters.mp3` | 37 |
 
 Los bloques de 37 segmentos siguen este orden:
 
