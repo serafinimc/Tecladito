@@ -287,7 +287,7 @@ function App() {
     practicePromptId.current += 1
     practiceAudio.current?.pause()
 
-    const audio = new Audio(`${import.meta.env.BASE_URL}audio/praise/${praise}.mp3?v=2`)
+    const audio = new Audio(`${import.meta.env.BASE_URL}audio/praise/${praise}.mp3?v=3`)
     practiceAudio.current = audio
     void audio.play().catch(() => undefined)
   }, [])
