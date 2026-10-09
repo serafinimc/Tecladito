@@ -22,7 +22,7 @@ type LetterPop = {
 
 type PlayMode = 'preschool' | 'words' | 'writer' | 'repeat'
 const PRACTICE_KEYS = 'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ0123456789'.split('')
-const PRACTICE_PRAISES = ['muy-bien', 'excelente', 'perfecto', 'genial', 'buen-trabajo', 'lo-encontraste']
+const PRACTICE_PRAISES = ['muy-bien', 'excelente', 'perfecto', 'genial', 'si', 'lo-encontraste']
 const choosePracticeKey = (previous = '') => {
   const candidates = PRACTICE_KEYS.filter((key) => key !== previous)
   return candidates[Math.floor(Math.random() * candidates.length)]
@@ -263,7 +263,7 @@ function App() {
     }
 
     const promptFilename = /^\d$/.test(value) ? 'donde-esta-el-numero' : 'donde-esta-la-letra'
-    const promptAudio = new Audio(`${import.meta.env.BASE_URL}audio/prompts/${promptFilename}.mp3?v=2`)
+    const promptAudio = new Audio(`${import.meta.env.BASE_URL}audio/prompts/${promptFilename}.mp3?v=3`)
     practiceAudio.current = promptAudio
     promptAudio.onended = playTargetAudio
     promptAudio.onerror = playTargetAudio
