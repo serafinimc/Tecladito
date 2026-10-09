@@ -272,8 +272,8 @@ function App() {
       else targetAudio.addEventListener('loadedmetadata', startTargetAudio, { once: true })
     }
 
-    const promptFilename = /^\d$/.test(value) ? 'donde-esta-el-numero' : 'donde-esta-la-letra'
-    const promptAudio = new Audio(`${import.meta.env.BASE_URL}audio/prompts/${promptFilename}.mp3?v=3`)
+    const promptFilename = /^\d$/.test(value) ? 'podes-encontrar-el-numero' : 'podes-encontrar-la-letra'
+    const promptAudio = new Audio(`${import.meta.env.BASE_URL}audio/prompts/${promptFilename}.mp3?v=4`)
     practiceAudio.current = promptAudio
     promptAudio.onended = playTargetAudio
     promptAudio.onerror = playTargetAudio
