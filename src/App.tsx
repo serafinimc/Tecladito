@@ -273,7 +273,7 @@ function App() {
     }
 
     const promptFilename = /^\d$/.test(value) ? 'busquemos-el-numero' : 'busquemos-la-letra'
-    const promptAudio = new Audio(`${import.meta.env.BASE_URL}audio/prompts/${promptFilename}.mp3?v=1`)
+    const promptAudio = new Audio(`${import.meta.env.BASE_URL}audio/prompts/${promptFilename}.mp3?v=2`)
     practiceAudio.current = promptAudio
     promptAudio.onended = playTargetAudio
     promptAudio.onerror = playTargetAudio
