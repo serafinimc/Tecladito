@@ -249,7 +249,7 @@ function App() {
     practiceAudio.current?.pause()
     const filename = value.toLocaleLowerCase('es-AR')
     const promptKind = /^\d$/.test(value) ? 'numero' : 'letra'
-    const promptAudio = new Audio(`${import.meta.env.BASE_URL}audio/prompts/${promptKind}-${encodeURIComponent(filename)}.mp3?v=5`)
+    const promptAudio = new Audio(`${import.meta.env.BASE_URL}audio/prompts/${promptKind}-${encodeURIComponent(filename)}.mp3?v=6`)
     practiceAudio.current = promptAudio
     void promptAudio.play().catch(() => undefined)
   }, [])
