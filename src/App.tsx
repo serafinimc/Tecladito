@@ -252,14 +252,24 @@ function App() {
     const promptId = practicePromptId.current
     practiceAudio.current?.pause()
     let targetStarted = false
+    const filename = value.toLocaleLowerCase('es-AR')
+    const targetAudio = new Audio(`${import.meta.env.BASE_URL}audio/characters/${encodeURIComponent(filename)}.mp3?v=7`)
+    targetAudio.preload = 'auto'
+    targetAudio.load()
 
     const playTargetAudio = () => {
       if (practicePromptId.current !== promptId || targetStarted) return
       targetStarted = true
-      const filename = value.toLocaleLowerCase('es-AR')
-      const audio = new Audio(`${import.meta.env.BASE_URL}audio/characters/${encodeURIComponent(filename)}.mp3?v=7`)
-      practiceAudio.current = audio
-      void audio.play().catch(() => undefined)
+
+      const startTargetAudio = () => {
+        if (practicePromptId.current !== promptId) return
+        targetAudio.currentTime = filename === 'o' ? 0.06 : 0.15
+        practiceAudio.current = targetAudio
+        void targetAudio.play().catch(() => undefined)
+      }
+
+      if (targetAudio.readyState >= HTMLMediaElement.HAVE_METADATA) startTargetAudio()
+      else targetAudio.addEventListener('loadedmetadata', startTargetAudio, { once: true })
     }
 
     const promptFilename = /^\d$/.test(value) ? 'donde-esta-el-numero' : 'donde-esta-la-letra'
